@@ -67,45 +67,42 @@ router.post("/login", async (req, res) => {
 
 router.post("/google-login", async (req, res) => {
   try {
-    const { name, email, photoUrl, token } = req.body;
+    const { name, email, number, photoUrl, loginType, token, available } = req.body;
 
     if (!email) {
       return res.status(400).json({ msg: "Email is required" });
     }
 
+    // Check user exists
     let user = await User.findOne({ email });
 
     if (!user) {
+      // create new user
       user = new User({
         name,
         email,
+        number: number || "",
+        password: "",  // keep empty since google login
+        token,
         photoUrl,
-        password: "", 
-        loginType: "Google",
-        available: "No",
+        available: available || "No",
+        loginType: loginType || "Google",
       });
+
+      await user.save();
+    } else {
+      // যদি user থাকে, update info (optional)
+      user.name = name;
+      user.photoUrl = photoUrl;
+      user.token = token;
+      user.loginType = "Google";
       await user.save();
     }
 
-    const jwtToken = jwt.sign(
-      { id: user._id, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-
-    res.json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      number: user.number,
-      photoUrl: user.photoUrl,
-      loginType: user.loginType,
-      available: user.available,
-      token: jwtToken,
-    });
+    res.status(200).json(user);
   } catch (err) {
-    console.error("Google login error:", err);
-    res.status(500).json({ msg: "Server error in Google login" });
+    console.error("Google Login Error:", err.message);
+    res.status(500).json({ msg: "Server error in Google login", error: err.message });
   }
 });
 
