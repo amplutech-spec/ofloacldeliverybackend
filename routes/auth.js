@@ -65,6 +65,50 @@ router.post("/login", async (req, res) => {
   }
 });
 
+router.post("/google-login", async (req, res) => {
+  try {
+    const { name, email, photoUrl, token } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ msg: "Email is required" });
+    }
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      user = new User({
+        name,
+        email,
+        photoUrl,
+        password: "", 
+        loginType: "Google",
+        available: "No",
+      });
+      await user.save();
+    }
+
+    const jwtToken = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      number: user.number,
+      photoUrl: user.photoUrl,
+      loginType: user.loginType,
+      available: user.available,
+      token: jwtToken,
+    });
+  } catch (err) {
+    console.error("Google login error:", err);
+    res.status(500).json({ msg: "Server error in Google login" });
+  }
+});
+
 // Get user profile (Protected)
 router.get("/profile", async (req, res) => {
   try {
